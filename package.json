@@ -1,0 +1,42 @@
+{
+  "name": "163qiyemail-mcp",
+  "version": "2.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "163qiyemail-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start-gateway": "npm run build && npx supergateway --stdio \"node dist/index.js\" --port 3200",
+    "quick-setup": "npm install && npm run build",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "mcp",
+    "email",
+    "163",
+    "netease",
+    "qiye",
+    "enterprise"
+  ],
+  "author": "jerryrat",
+  "license": "ISC",
+  "description": "网易企业邮箱 MCP Server - 支持发送、接收、搜索、管理企业邮件",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.0",
+    "dotenv": "^16.3.0",
+    "imapflow": "^1.2.16",
+    "mailparser": "^3.9.5",
+    "nodemailer": "^6.9.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.6",
+    "@types/node": "^22.15.21",
+    "@types/nodemailer": "^6.4.0",
+    "supergateway": "^2.8.3",
+    "typescript": "^5.8.3"
+  }
+}
