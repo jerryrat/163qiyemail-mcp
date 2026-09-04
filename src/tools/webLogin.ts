@@ -6,10 +6,10 @@
 import crypto from "crypto";
 import fs from "fs";
 import path from "path";
-import { fileURLToPath } from "url";
+import os from "os";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const SESSION_FILE = path.join(__dirname, "../../.session.json");
+// session 存用户目录，避免凭据落在源码/共享目录
+const SESSION_FILE = path.join(os.homedir(), ".163qiyemail-session.json");
 
 export interface SessionData {
   sid: string;

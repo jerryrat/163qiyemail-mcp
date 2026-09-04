@@ -13,10 +13,11 @@ interface SendEmailArgs {
   }>;
 }
 
-function getSmtpConfig() {
+export function getSmtpConfig() {
   const host = process.env.SMTP_HOST || "smtphz.qiye.163.com";
   const port = parseInt(process.env.SMTP_PORT || "994");
-  const secure = process.env.SMTP_SECURE === "true";
+  // 994/465 是隐式 TLS 端口，未显式设置时默认 secure=true
+  const secure = process.env.SMTP_SECURE !== "false";
   const user = process.env.SMTP_USER!;
   const pass = process.env.SMTP_PASS!;
   const defaultFrom = process.env.DEFAULT_FROM_EMAIL!;

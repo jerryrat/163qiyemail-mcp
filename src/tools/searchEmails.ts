@@ -73,8 +73,10 @@ async function searchViaIMAP(args: SearchEmailsArgs): Promise<EmailResult[]> {
       try {
         const exists = (client.mailbox as any).exists as number;
         if (exists === 0) continue;
+        // ponytail: 只扫最近 500 封防大邮箱超时；需全量用 Web API 路径
+        const range = exists > 500 ? `${exists - 499}:*` : "1:*";
 
-        for await (const msg of client.fetch("1:*", { envelope: true, uid: true })) {
+        for await (const msg of client.fetch(range, { envelope: true, uid: true })) {
           if (emails.length >= args.limit) break;
           const env = msg.envelope;
           if (!env) continue;
@@ -105,7 +107,7 @@ async function searchViaIMAP(args: SearchEmailsArgs): Promise<EmailResult[]> {
 
         if (args.searchBody && emails.length < args.limit) {
           const unmatchedUids: number[] = [];
-          for await (const msg of client.fetch("1:*", { uid: true })) {
+          for await (const msg of client.fetch(range, { uid: true })) {
             if (!matchedUids.has(`${folder}:${msg.uid}`)) unmatchedUids.push(msg.uid);
           }
           unmatchedUids.reverse();

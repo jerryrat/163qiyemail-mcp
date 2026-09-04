@@ -69,8 +69,11 @@ async function findViaIMAP(args: FindEmailFolderArgs) {
       let lock;
       try { lock = await client.getMailboxLock(folder.path); } catch { continue; }
       try {
-        if ((client.mailbox as any).exists === 0) continue;
-        for await (const msg of client.fetch("1:*", { envelope: true, uid: true })) {
+        const exists = (client.mailbox as any).exists as number;
+        if (exists === 0) continue;
+        // ponytail: 只扫最近 500 封防大邮箱超时
+        const range = exists > 500 ? `${exists - 499}:*` : "1:*";
+        for await (const msg of client.fetch(range, { envelope: true, uid: true })) {
           if (results.length >= args.limit) break;
           const env = msg.envelope;
           if (!env) continue;

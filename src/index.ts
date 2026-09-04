@@ -141,7 +141,7 @@ class EmailMCPServer {
         },
         {
           name: "delete_email",
-          description: "删除指定邮件",
+          description: "永久删除指定邮件（直接删除，不是移入回收站）",
           inputSchema: {
             type: "object",
             properties: {

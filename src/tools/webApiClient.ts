@@ -49,10 +49,10 @@ export interface ListMessagesParams {
 
 export interface ReadMessageParams {
   id: string;
-  fid: string;
+  fid?: string; // 已不需要，保留兼容
 }
 
-import { getValidSession, loadSession } from "./webLogin.js";
+import { getValidSession, loadSession, clearSession } from "./webLogin.js";
 
 function getWebApiConfigSync(): WebApiConfig | null {
   // 同步检查：.env 配置或缓存的 session
@@ -140,14 +140,7 @@ async function callApi(config: WebApiConfig, func: string, body: any): Promise<s
 
   if (text.includes("FA_INVALID_SESSION")) {
     // 清除缓存的 session，下次调用会自动重新登录
-    const fs = await import("fs");
-    const path = await import("path");
-    const { fileURLToPath } = await import("url");
-    const sessionFile = path.default.join(
-      path.default.dirname(fileURLToPath(import.meta.url)),
-      "../../.session.json"
-    );
-    try { fs.default.unlinkSync(sessionFile); } catch {}
+    clearSession();
     throw new Error("Web API 会话已失效，将在下次请求时自动重新登录。");
   }
 
@@ -207,7 +200,7 @@ function splitTopLevelObjects(xml: string): string[] {
 }
 
 // 解析 XML 响应中的邮件列表
-function parseSearchXml(xml: string): SearchResult {
+export function parseSearchXml(xml: string): SearchResult {
   const emails: WebEmailItem[] = [];
 
   // 提取 total
@@ -302,7 +295,7 @@ export async function webListMessages(params: ListMessagesParams): Promise<Searc
   const config = await getWebApiConfig();
 
   const body = {
-    fid: params.fid,
+    fid: Number(params.fid), // 服务端只认整数 fid，字符串会被静默忽略
     start: params.start || 0,
     limit: params.limit || 20,
     order: params.order || "date",
@@ -315,20 +308,31 @@ export async function webListMessages(params: ListMessagesParams): Promise<Searc
   return parseSearchXml(xml);
 }
 
+// 从 readMessage 响应中提取正文纯文本（实体转义或 CDATA 两种形态）；解析不到返回 null
+export function extractMessageText(xml: string): string | null {
+  const m = xml.match(/<object name="html">[\s\S]*?<string name="content">(?:<!\[CDATA\[([\s\S]*?)\]\]>|([\s\S]*?))<\/string>/);
+  const raw = m ? (m[1] ?? m[2]) : null;
+  if (!raw) return null;
+  // 先解 XML 层实体得到 HTML，剥标签后再解 HTML 层实体
+  return decodeHtml(
+    decodeHtml(raw)
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+  )
+    .replace(/&nbsp;|&#160;/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 /**
- * 通过 Web API 读取邮件详情
+ * 通过 Web API 读取邮件正文
+ * 注意：readMessage 只认 { id, mode }，多传 fid/returnBody 等参数会返回 FS_UNKNOWN
  */
 export async function webReadMessage(params: ReadMessageParams): Promise<string> {
   const config = await getWebApiConfig();
 
-  const body = {
-    id: params.id,
-    fid: params.fid,
-    returnHeaders: true,
-    returnBody: true,
-  };
-
-  return await callApi(config, "mbox:readMessage", body);
+  const xml = await callApi(config, "mbox:readMessage", { id: params.id, mode: "both" });
+  return extractMessageText(xml) ?? xml;
 }
 
 /**

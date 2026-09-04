@@ -1,5 +1,6 @@
 import nodemailer from "nodemailer";
 import { createImapConnection } from "./imapClient.js";
+import { getSmtpConfig } from "./sendEmail.js";
 import { simpleParser } from "mailparser";
 
 interface ReplyEmailArgs {
@@ -55,11 +56,12 @@ export function createReplyEmailTool() {
       }
 
       // 2. 通过 SMTP 发送回复
+      const config = getSmtpConfig();
       const transporter = nodemailer.createTransport({
-        host: process.env.SMTP_HOST!,
-        port: parseInt(process.env.SMTP_PORT || "994"),
-        secure: process.env.SMTP_SECURE === "true",
-        auth: { user: process.env.SMTP_USER!, pass: process.env.SMTP_PASS! },
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        auth: config.auth,
       });
 
       const replySubject = originalSubject.startsWith("Re:")
@@ -68,13 +70,19 @@ export function createReplyEmailTool() {
 
       let toAddresses = originalFrom;
       if (args.replyAll) {
-        toAddresses = [originalFrom, originalTo, originalCc]
-          .filter((addr) => addr)
-          .join(", ");
+        // 回复全部时排除自己，避免给自己发一份
+        const myEmail = config.defaultFrom.toLowerCase();
+        const others = [originalFrom, originalTo, originalCc]
+          .filter(Boolean)
+          .join(", ")
+          .split(",")
+          .map((s) => s.trim())
+          .filter((s) => s && !s.toLowerCase().includes(myEmail));
+        toAddresses = others.length > 0 ? others.join(", ") : originalFrom;
       }
 
       const result = await transporter.sendMail({
-        from: process.env.DEFAULT_FROM_EMAIL!,
+        from: config.defaultFrom,
         to: toAddresses,
         subject: replySubject,
         [args.html ? "html" : "text"]: args.body,
