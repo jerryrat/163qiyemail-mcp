@@ -3,7 +3,7 @@
 import dotenv from "dotenv";
 import path from "path";
 import { fileURLToPath } from "url";
-dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env") });
+dotenv.config({ path: path.join(path.dirname(fileURLToPath(import.meta.url)), "../.env"), override: true });
 
 const { createListFoldersTool } = await import("../dist/tools/listFolders.js");
 const { createSearchEmailsTool } = await import("../dist/tools/searchEmails.js");

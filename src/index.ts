@@ -18,8 +18,9 @@ import { createReplyEmailTool } from "./tools/replyEmail.js";
 import { createListFoldersTool } from "./tools/listFolders.js";
 import { createFindEmailFolderTool } from "./tools/findEmailFolder.js";
 import { createGetCorrespondenceTool } from "./tools/getCorrespondence.js";
+import { clearSession, verifyWebSms, webLogin } from "./tools/webLogin.js";
 
-dotenv.config();
+dotenv.config({ override: true });
 
 // Validation schemas
 const SendEmailSchema = z.object({
@@ -71,6 +72,10 @@ const FindEmailFolderSchema = z.object({
 const GetCorrespondenceSchema = z.object({
   email: z.string(),
   limit: z.coerce.number().optional().default(20),
+});
+
+const WebLoginSchema = z.object({
+  smsCode: z.string().regex(/^\d{6}$/).optional(),
 });
 
 class EmailMCPServer {
@@ -195,6 +200,16 @@ class EmailMCPServer {
             required: ["email"],
           },
         },
+        {
+          name: "web_login",
+          description: "发起网易 Web 登录；如需短信验证，收到验证码后再次调用并传入 smsCode",
+          inputSchema: {
+            type: "object",
+            properties: {
+              smsCode: { type: "string", pattern: "^\\d{6}$", description: "手机收到的 6 位验证码" },
+            },
+          },
+        },
       ];
 
       return { tools };
@@ -234,6 +249,16 @@ class EmailMCPServer {
           case "get_correspondence": {
             const args = GetCorrespondenceSchema.parse(request.params.arguments);
             return await createGetCorrespondenceTool()(args);
+          }
+          case "web_login": {
+            const { smsCode } = WebLoginSchema.parse(request.params.arguments || {});
+            if (smsCode) {
+              await verifyWebSms(smsCode);
+              return { content: [{ type: "text", text: "Web 登录成功" }] };
+            }
+            clearSession();
+            await webLogin();
+            return { content: [{ type: "text", text: "Web 登录成功，无需短信验证" }] };
           }
           default:
             throw new Error(`Unknown tool: ${request.params.name}`);
